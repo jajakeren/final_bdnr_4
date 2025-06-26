@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card">
+    <h2>Pendaftaran Mata Kuliah (KRS)</h2>
+    <p>Silakan pilih mata kuliah yang ingin Anda ambil semester ini.</p>
+    <table>
+        <thead><tr><th>Kode MK</th><th>Nama</th><th>SKS</th><th>Aksi</th></tr></thead>
+        <tbody>
+            {% for course in courses %}
+            <tr>
+                <td>{{ course._id }}</td><td>{{ course.name }}</td><td>{{ course.sks }}</td>
+                <td>
+                    {% if course._id in enrolled_ids %}
+                        <span class="badge role-mahasiswa">Sudah Diambil</span>
+                    {% else %}
+                        <form action="{{ url_for('enroll_action', course_id=course._id) }}" method="POST">
+                            <button type="submit" class="btn btn-small">Ambil MK</button>
+                        </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <br>
+    <a href="{{ url_for('student_dashboard') }}">Kembali ke Dashboard</a>
+</div>
+{% endblock %}

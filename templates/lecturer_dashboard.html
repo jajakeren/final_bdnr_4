@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% block content %}
+    <h2>Dashboard Dosen</h2>
+    <p>Kelola nilai mahasiswa untuk mata kuliah yang Anda ampu.</p>
+    {% for course in courses %}
+    <div class="card">
+        <h3>{{ course._id }} - {{ course.name }}</h3>
+        {% if course.students %}
+            <table>
+                <thead><tr><th>NIM</th><th>Nama</th><th>Nilai</th><th>Input Nilai</th></tr></thead>
+                <tbody>
+                    {% for student in course.students %}
+                    <tr>
+                        <td>{{ student.student_nim }}</td><td>{{ student.student_name }}</td>
+                        <td><strong>{{ student.grade if student.grade else 'Kosong' }}</strong></td>
+                        <td>
+                            <form action="{{ url_for('input_grade') }}" method="POST" class="inline-form">
+                                <input type="hidden" name="enrollment_id" value="{{ student._id }}">
+                                <select name="grade">
+                                    <option value="A" {% if student.grade == 'A' %}selected{% endif %}>A</option>
+                                    <option value="B" {% if student.grade == 'B' %}selected{% endif %}>B</option>
+                                    <option value="C" {% if student.grade == 'C' %}selected{% endif %}>C</option>
+                                    <option value="D" {% if student.grade == 'D' %}selected{% endif %}>D</option>
+                                    <option value="E" {% if student.grade == 'E' %}selected{% endif %}>E</option>
+                                </select>
+                                <button type="submit" class="btn btn-small">Simpan</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Belum ada mahasiswa yang terdaftar.</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+{% endblock %}

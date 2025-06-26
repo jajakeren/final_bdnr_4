@@ -1,0 +1,89 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card">
+    <h2>Selamat Datang, Admin {{ session.user_name }}!</h2>
+    <p>Di sini Anda dapat mengelola data master sistem.</p>
+</div>
+
+<div class="card">
+    <h3>Manajemen Mata Kuliah</h3>
+    <h4>Tambah Mata Kuliah Baru</h4>
+    <form action="{{ url_for('add_course') }}" method="POST">
+        <div class="form-group"><label>Kode MK</label><input type="text" name="course_id" required></div>
+        <div class="form-group"><label>Nama Mata Kuliah</label><input type="text" name="course_name" required></div>
+        <div class="form-group"><label>Jumlah SKS</label><input type="number" name="sks" required></div>
+        <div class="form-group">
+            <label>Dosen Pengampu</label>
+            <select name="lecturer_id" required>
+                <option value="">-- Pilih Dosen --</option>
+                {% for lecturer in lecturers %}<option value="{{ lecturer._id }}">{{ lecturer.full_name }}</option>{% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn">Tambah MK</button>
+    </form>
+    <hr style="margin: 30px 0;">
+    <h4>Daftar Mata Kuliah</h4>
+    <table>
+        <thead><tr><th>Kode MK</th><th>Nama</th><th>SKS</th><th>Aksi</th></tr></thead>
+        <tbody>
+            {% for course in courses %}
+            <tr>
+                <td>{{ course._id }}</td><td>{{ course.name }}</td><td>{{ course.sks }}</td>
+                <td><a href="{{ url_for('delete_course', course_id=course._id) }}" class="btn btn-small btn-danger" onclick="return confirm('Anda yakin?')">Hapus</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h3>Manajemen Pengguna</h3>
+    <h4>Registrasi Pengguna Baru</h4>
+    <form action="{{ url_for('register_user') }}" method="POST">
+        <div class="form-group"><label>Nama Lengkap</label><input type="text" name="full_name" required></div>
+        <div class="form-group"><label>Username</label><input type="text" name="username" required></div>
+        <div class="form-group"><label>Password Awal</label><input type="password" name="password" required></div>
+        <div class="form-group">
+            <label>Peran</label>
+            <select name="role" id="role-select" onchange="toggleNimField()" required>
+                <option value="">-- Pilih Peran --</option><option value="mahasiswa">Mahasiswa</option><option value="dosen">Dosen</option>
+            </select>
+        </div>
+        <div class="form-group" id="nim-field" style="display: none;">
+            <label>NIM</label><input type="text" name="nim">
+        </div>
+        <button type="submit" class="btn">Daftarkan Pengguna</button>
+    </form>
+    <hr style="margin: 30px 0;">
+    <h4>Daftar Pengguna</h4>
+    <table>
+        <thead><tr><th>Nama</th><th>Username</th><th>Peran</th><th>NIM</th><th>Aksi</th></tr></thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.full_name }}</td><td>{{ user.username }}</td>
+                <td><span class="badge role-{{ user.role }}">{{ user.role }}</span></td>
+                <td>{{ user.nim if user.nim else 'N/A' }}</td>
+                <td>
+                    {% if user.role != 'admin' %}<a href="{{ url_for('delete_user', user_id=user._id) }}" class="btn btn-small btn-danger" onclick="return confirm('Anda yakin?')">Hapus</a>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    function toggleNimField() {
+        var roleSelect = document.getElementById('role-select');
+        var nimField = document.getElementById('nim-field');
+        if (roleSelect.value === 'mahasiswa') {
+            nimField.style.display = 'block';
+            nimField.querySelector('input').required = true;
+        } else {
+            nimField.style.display = 'none';
+            nimField.querySelector('input').required = false;
+        }
+    }
+</script>
+{% endblock %}

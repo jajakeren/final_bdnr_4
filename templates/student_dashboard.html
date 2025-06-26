@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card">
+    <a href="{{ url_for('enroll_courses') }}" class="btn">Ambil Mata Kuliah Baru (KRS)</a>
+</div>
+
+<div class="card">
+    <h3>Jadwal Kuliah Anda</h3>
+    {% if schedule %}
+        <table>
+            <thead><tr><th>Kode MK</th><th>Nama Mata Kuliah</th><th>SKS</th><th>Dosen</th></tr></thead>
+            <tbody>
+                {% for item in schedule %}
+                <tr><td>{{ item.kode_mk }}</td><td>{{ item.nama_mk }}</td><td>{{ item.sks }}</td><td>{{ item.dosen }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Anda belum mengambil mata kuliah.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Transkrip Nilai & IPK</h3>
+    {% if transcript %}
+        <table>
+            <thead><tr><th>Kode MK</th><th>Nama Mata Kuliah</th><th>SKS</th><th>Nilai</th></tr></thead>
+            <tbody>
+                {% for item in transcript.transcript_items %}
+                <tr><td>{{ item.kode_mk }}</td><td>{{ item.nama_mk }}</td><td>{{ item.sks }}</td><td>{{ item.nilai }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="gpa-summary">
+            <h4>Total SKS: {{ transcript.total_sks }}</h4>
+            <h3>IPK: {{ "%.2f"|format(transcript.ipk) }}</h3>
+        </div>
+    {% else %}
+        <p>Belum ada nilai yang bisa ditampilkan.</p>
+    {% endif %}
+</div>
+{% endblock %}

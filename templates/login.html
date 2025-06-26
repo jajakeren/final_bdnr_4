@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="login-form card">
+    <h2>Selamat Datang</h2>
+    <p>Silakan login ke akun Anda</p>
+    <form method="POST" action="{{ url_for('login') }}">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit" class="btn">Login</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card">
+    <h2>Edit Pengguna</h2>
+    <form method="POST">
+        <div class="form-group">
+            <label>Nama Lengkap</label>
+            <input type="text" name="full_name" value="{{ user.full_name }}" required>
+        </div>
+        <div class="form-group">
+            <label>Username (Tidak dapat diubah)</label>
+            <input type="text" name="username" value="{{ user.username }}" readonly disabled>
+        </div>
+        <div class="form-group">
+            <label>Password Baru</label>
+            <input type="password" name="password" placeholder="Kosongkan jika tidak ingin mengubah password">
+        </div>
+        <div class="form-group">
+            <label>Peran (Role)</label>
+            <select name="role" required>
+                <option value="mahasiswa" {% if user.role == 'mahasiswa' %}selected{% endif %}>Mahasiswa</option>
+                <option value="dosen" {% if user.role == 'dosen' %}selected{% endif %}>Dosen</option>
+            </select>
+        </div>
+        {% if user.role == 'mahasiswa' %}
+        <div class="form-group">
+            <label>NIM</label>
+            <input type="text" name="nim" value="{{ user.nim }}">
+        </div>
+        {% endif %}
+        <button type="submit" class="btn">Simpan Perubahan</button>
+        <a href="{{ url_for('admin_dashboard') }}" style="margin-left: 10px;">Batal</a>
+    </form>
+</div>
+{% endblock %}

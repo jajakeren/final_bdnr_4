@@ -21,29 +21,19 @@ except pymongo.errors.ServerSelectionTimeoutError as err:
     print(f"Koneksi ke MongoDB GAGAL. Pastikan server MongoDB Anda sudah berjalan. Error: {err}")
     exit()
 
-# ===================================================================
-# ===== BLOK KODE UNTUK MEMBUAT ADMIN OTOMATIS =====
-# ===================================================================
+# --- Blok Pembuat Admin Otomatis ---
 with app.app_context():
-    # Cek apakah sudah ada user dengan role 'admin'
     if not users_col.find_one({"role": "admin"}):
         print("Akun admin tidak ditemukan, membuat akun admin default...")
-        admin_password = "adminpass"  # Anda bisa ganti password default ini
+        admin_password = "adminpass"
         hashed_password = generate_password_hash(admin_password)
         users_col.insert_one({
-            "username": "admin",
-            "password": hashed_password,
-            "full_name": "Administrator Sistem",
-            "role": "admin",
-            "nim": None
+            "username": "admin", "password": hashed_password,
+            "full_name": "Administrator Sistem", "role": "admin", "nim": None
         })
         print(f"Akun admin berhasil dibuat dengan username 'admin' dan password '{admin_password}'")
-# ===================================================================
-# =================== AKHIR BLOK KODE BARU ==========================
-# ===================================================================
 
-
-# --- Decorator untuk Memeriksa Login ---
+# --- Decorator & Rute Otentikasi ---
 def login_required(view):
     @functools.wraps(view)
     def wrapped_view(**kwargs):
@@ -53,22 +43,16 @@ def login_required(view):
         return view(**kwargs)
     return wrapped_view
 
-# --- Rute Otentikasi & Dashboard Utama ---
-
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        user = users_col.find_one({"username": username})
-
-        if user and check_password_hash(user.get('password', ''), password):
+        user = users_col.find_one({"username": request.form.get('username')})
+        if user and check_password_hash(user.get('password', ''), request.form.get('password')):
             session['user_id'] = str(user['_id'])
             session['user_name'] = user['full_name']
             session['user_role'] = user['role']
             return redirect(url_for('dashboard'))
-        else:
-            flash('Username atau password salah.', 'danger')
+        flash('Username atau password salah.', 'danger')
     return render_template('login.html')
 
 @app.route('/logout')
@@ -80,97 +64,115 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    role = session.get('user_role')
-    if role == 'admin':
-        return redirect(url_for('admin_dashboard'))
-    elif role == 'dosen':
-        return redirect(url_for('lecturer_dashboard'))
-    elif role == 'mahasiswa':
-        return redirect(url_for('student_dashboard'))
-    return redirect(url_for('login'))
+    role_map = {'admin': 'admin_dashboard', 'dosen': 'lecturer_dashboard', 'mahasiswa': 'student_dashboard'}
+    return redirect(url_for(role_map.get(session.get('user_role'), 'login')))
 
 # --- Rute untuk ADMIN ---
 
 @app.route('/admin/dashboard')
 @login_required
 def admin_dashboard():
-    if session.get('user_role') != 'admin':
-        return redirect(url_for('dashboard'))
-    
+    if session.get('user_role') != 'admin': return redirect(url_for('dashboard'))
     all_users = list(users_col.find())
     all_courses = list(courses_col.find())
     all_lecturers = list(users_col.find({"role": "dosen"}))
-
     return render_template('admin_dashboard.html', users=all_users, courses=all_courses, lecturers=all_lecturers)
 
+# CREATE
 @app.route('/admin/register', methods=['POST'])
 @login_required
 def register_user():
-    if session.get('user_role') != 'admin':
-        return redirect(url_for('dashboard'))
-
-    full_name = request.form.get('full_name')
+    if session.get('user_role') != 'admin': return redirect(url_for('dashboard'))
     username = request.form.get('username')
-    password = request.form.get('password')
-    role = request.form.get('role')
-    nim = request.form.get('nim') if role == 'mahasiswa' else None
-
     if users_col.find_one({"username": username}):
         flash(f"Username '{username}' sudah digunakan.", "danger")
         return redirect(url_for('admin_dashboard'))
-
-    hashed_password = generate_password_hash(password)
     users_col.insert_one({
-        "full_name": full_name, "username": username, "password": hashed_password,
-        "role": role, "nim": nim
+        "full_name": request.form.get('full_name'), "username": username,
+        "password": generate_password_hash(request.form.get('password')),
+        "role": request.form.get('role'),
+        "nim": request.form.get('nim') if request.form.get('role') == 'mahasiswa' else None
     })
-    flash(f"Pengguna '{full_name}' dengan peran {role} berhasil didaftarkan.", "success")
+    flash(f"Pengguna '{request.form.get('full_name')}' berhasil didaftarkan.", "success")
     return redirect(url_for('admin_dashboard'))
-
-@app.route('/admin/delete_user/<user_id>')
-@login_required
-def delete_user(user_id):
-    if session.get('user_role') != 'admin':
-        return redirect(url_for('dashboard'))
-    
-    user_to_delete_id = ObjectId(user_id)
-    if str(user_to_delete_id) == session.get('user_id'):
-        flash("Anda tidak dapat menghapus akun Anda sendiri.", "danger")
-        return redirect(url_for('admin_dashboard'))
-
-    users_col.delete_one({"_id": user_to_delete_id})
-    enrollments_col.delete_many({"student_id": user_to_delete_id})
-    flash("Pengguna berhasil dihapus.", "success")
-    return redirect(url_for('admin_dashboard'))
-
 
 @app.route('/admin/add_course', methods=['POST'])
 @login_required
 def add_course():
-    if session.get('user_role') != 'admin':
-        return redirect(url_for('dashboard'))
-    
+    if session.get('user_role') != 'admin': return redirect(url_for('dashboard'))
     course_id = request.form.get('course_id')
     if courses_col.find_one({"_id": course_id}):
         flash(f"Mata Kuliah dengan kode {course_id} sudah ada!", "danger")
     else:
         courses_col.insert_one({
-            "_id": course_id,
-            "name": request.form.get('course_name'),
+            "_id": course_id, "name": request.form.get('course_name'),
             "sks": int(request.form.get('sks')),
             "lecturer_id": ObjectId(request.form.get('lecturer_id'))
         })
         flash("Mata Kuliah baru berhasil ditambahkan.", "success")
     return redirect(url_for('admin_dashboard'))
 
+# UPDATE (Fitur EDIT Baru)
+@app.route('/admin/edit_user/<user_id>', methods=['GET', 'POST'])
+@login_required
+def edit_user(user_id):
+    if session.get('user_role') != 'admin': return redirect(url_for('dashboard'))
+    user_to_edit = users_col.find_one({"_id": ObjectId(user_id)})
+
+    if request.method == 'POST':
+        update_data = {
+            "full_name": request.form.get('full_name'),
+            "role": request.form.get('role'),
+            "nim": request.form.get('nim') if request.form.get('role') == 'mahasiswa' else None
+        }
+        # Hanya update password jika diisi
+        if request.form.get('password'):
+            update_data['password'] = generate_password_hash(request.form.get('password'))
+        
+        users_col.update_one({"_id": ObjectId(user_id)}, {"$set": update_data})
+        flash("Data pengguna berhasil diperbarui.", "success")
+        return redirect(url_for('admin_dashboard'))
+    
+    return render_template('edit_user.html', user=user_to_edit)
+
+@app.route('/admin/edit_course/<course_id>', methods=['GET', 'POST'])
+@login_required
+def edit_course(course_id):
+    if session.get('user_role') != 'admin': return redirect(url_for('dashboard'))
+    course_to_edit = courses_col.find_one({"_id": course_id})
+    
+    if request.method == 'POST':
+        courses_col.update_one({"_id": course_id}, {"$set": {
+            "name": request.form.get('course_name'),
+            "sks": int(request.form.get('sks')),
+            "lecturer_id": ObjectId(request.form.get('lecturer_id'))
+        }})
+        flash("Data mata kuliah berhasil diperbarui.", "success")
+        return redirect(url_for('admin_dashboard'))
+
+    all_lecturers = list(users_col.find({"role": "dosen"}))
+    return render_template('edit_course.html', course=course_to_edit, lecturers=all_lecturers)
+
+# DELETE
+@app.route('/admin/delete_user/<user_id>')
+@login_required
+def delete_user(user_id):
+    if session.get('user_role') != 'admin': return redirect(url_for('dashboard'))
+    if str(ObjectId(user_id)) == session.get('user_id'):
+        flash("Anda tidak dapat menghapus akun Anda sendiri.", "danger")
+        return redirect(url_for('admin_dashboard'))
+    users_col.delete_one({"_id": ObjectId(user_id)})
+    enrollments_col.delete_many({"student_id": ObjectId(user_id)})
+    flash("Pengguna berhasil dihapus.", "success")
+    return redirect(url_for('admin_dashboard'))
+
 @app.route('/admin/delete_course/<course_id>')
 @login_required
 def delete_course(course_id):
-    if session.get('user_role') != 'admin':
-        return redirect(url_for('dashboard'))
+    if session.get('user_role') != 'admin': return redirect(url_for('dashboard'))
     enrollments_col.delete_many({"course_id": course_id})
     courses_col.delete_one({"_id": course_id})
-    flash(f"Mata Kuliah {course_id} dan data pendaftaran terkait berhasil dihapus.", "success")
+    flash(f"Mata Kuliah {course_id} dan data terkait berhasil dihapus.", "success")
     return redirect(url_for('admin_dashboard'))
 
 # --- Rute untuk MAHASISWA ---
@@ -178,11 +180,8 @@ def delete_course(course_id):
 @app.route('/student/dashboard')
 @login_required
 def student_dashboard():
-    if session.get('user_role') != 'mahasiswa':
-        return redirect(url_for('dashboard'))
-    
+    if session.get('user_role') != 'mahasiswa': return redirect(url_for('dashboard'))
     student_id = ObjectId(session['user_id'])
-    
     schedule_pipeline = [
         {"$match": {"student_id": student_id}},
         {"$lookup": {"from": "courses", "localField": "course_id", "foreignField": "_id", "as": "course"}},
@@ -192,7 +191,6 @@ def student_dashboard():
         {"$project": {"_id": 0, "kode_mk": "$course_id", "nama_mk": "$course.name", "sks": "$course.sks", "dosen": "$lecturer.full_name"}}
     ]
     schedule_data = list(enrollments_col.aggregate(schedule_pipeline))
-
     gpa_pipeline = [
         {"$match": {"student_id": student_id, "grade": {"$ne": None, "$exists": True}}},
         {"$lookup": {"from": "courses", "localField": "course_id", "foreignField": "_id", "as": "c"}},
@@ -203,28 +201,22 @@ def student_dashboard():
     ]
     gpa_result = list(enrollments_col.aggregate(gpa_pipeline))
     transcript_data = gpa_result[0] if gpa_result else None
-
     return render_template('student_dashboard.html', schedule=schedule_data, transcript=transcript_data)
 
 @app.route('/student/enroll')
 @login_required
 def enroll_courses():
-    if session.get('user_role') != 'mahasiswa':
-        return redirect(url_for('dashboard'))
-
+    if session.get('user_role') != 'mahasiswa': return redirect(url_for('dashboard'))
     student_id = ObjectId(session['user_id'])
     enrolled_courses_docs = list(enrollments_col.find({"student_id": student_id}, {"_id": 0, "course_id": 1}))
     enrolled_course_ids = [doc['course_id'] for doc in enrolled_courses_docs]
-
     all_courses = list(courses_col.find())
     return render_template('available_courses.html', courses=all_courses, enrolled_ids=enrolled_course_ids)
 
 @app.route('/student/enroll/action/<course_id>', methods=['POST'])
 @login_required
 def enroll_action(course_id):
-    if session.get('user_role') != 'mahasiswa':
-        return redirect(url_for('dashboard'))
-
+    if session.get('user_role') != 'mahasiswa': return redirect(url_for('dashboard'))
     student_id = ObjectId(session['user_id'])
     if enrollments_col.find_one({"student_id": student_id, "course_id": course_id}):
         flash("Anda sudah terdaftar di mata kuliah ini.", "danger")
@@ -238,12 +230,9 @@ def enroll_action(course_id):
 @app.route('/lecturer/dashboard')
 @login_required
 def lecturer_dashboard():
-    if session.get('user_role') != 'dosen':
-        return redirect(url_for('dashboard'))
-    
+    if session.get('user_role') != 'dosen': return redirect(url_for('dashboard'))
     lecturer_id = ObjectId(session['user_id'])
     courses = list(courses_col.find({"lecturer_id": lecturer_id}))
-    
     for course in courses:
         pipeline = [
             {"$match": {"course_id": course['_id']}},
@@ -252,18 +241,14 @@ def lecturer_dashboard():
             {"$project": {"_id": 1, "grade": 1, "student_name": "$student.full_name", "student_nim": "$student.nim"}}
         ]
         course['students'] = list(enrollments_col.aggregate(pipeline))
-        
     return render_template('lecturer_dashboard.html', courses=courses)
 
 @app.route('/lecturer/input_grade', methods=['POST'])
 @login_required
 def input_grade():
-    if session.get('user_role') != 'dosen':
-        return redirect(url_for('dashboard'))
-    
+    if session.get('user_role') != 'dosen': return redirect(url_for('dashboard'))
     enrollment_id = ObjectId(request.form['enrollment_id'])
     new_grade = request.form.get('grade').upper()
-
     if new_grade in ['A', 'B', 'C', 'D', 'E']:
         enrollments_col.update_one({"_id": enrollment_id}, {"$set": {"grade": new_grade}})
         flash('Nilai berhasil diperbarui!', 'success')
@@ -272,7 +257,5 @@ def input_grade():
     return redirect(url_for('lecturer_dashboard'))
 
 # --- Jalankan Aplikasi ---
-
 if __name__ == '__main__':
-    # Menambahkan reloader_type='stat' untuk kompatibilitas yang lebih baik di Windows
     app.run(debug=True, port=5001, reloader_type='stat')

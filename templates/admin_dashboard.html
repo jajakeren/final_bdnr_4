@@ -5,6 +5,7 @@
     <p>Di sini Anda dapat mengelola data master sistem.</p>
 </div>
 
+<!-- Manajemen Mata Kuliah -->
 <div class="card">
     <h3>Manajemen Mata Kuliah</h3>
     <h4>Tambah Mata Kuliah Baru</h4>
@@ -29,13 +30,18 @@
             {% for course in courses %}
             <tr>
                 <td>{{ course._id }}</td><td>{{ course.name }}</td><td>{{ course.sks }}</td>
-                <td><a href="{{ url_for('delete_course', course_id=course._id) }}" class="btn btn-small btn-danger" onclick="return confirm('Anda yakin?')">Hapus</a></td>
+                <td>
+                    <!-- TOMBOL EDIT DITAMBAHKAN DI SINI -->
+                    <a href="{{ url_for('edit_course', course_id=course._id) }}" class="btn btn-small">Edit</a>
+                    <a href="{{ url_for('delete_course', course_id=course._id) }}" class="btn btn-small btn-danger" onclick="return confirm('Anda yakin?')">Hapus</a>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
 
+<!-- Manajemen Pengguna -->
 <div class="card">
     <h3>Manajemen Pengguna</h3>
     <h4>Registrasi Pengguna Baru</h4>
@@ -65,7 +71,11 @@
                 <td><span class="badge role-{{ user.role }}">{{ user.role }}</span></td>
                 <td>{{ user.nim if user.nim else 'N/A' }}</td>
                 <td>
-                    {% if user.role != 'admin' %}<a href="{{ url_for('delete_user', user_id=user._id) }}" class="btn btn-small btn-danger" onclick="return confirm('Anda yakin?')">Hapus</a>{% endif %}
+                    {% if user.role != 'admin' %}
+                        <!-- TOMBOL EDIT DITAMBAHKAN DI SINI -->
+                        <a href="{{ url_for('edit_user', user_id=user._id) }}" class="btn btn-small">Edit</a>
+                        <a href="{{ url_for('delete_user', user_id=user._id) }}" class="btn btn-small btn-danger" onclick="return confirm('Anda yakin?')">Hapus</a>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
